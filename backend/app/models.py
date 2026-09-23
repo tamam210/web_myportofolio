@@ -22,6 +22,7 @@ class PendingQuestion(Base):
     question: Mapped[str] = mapped_column(Text())
     user_email: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20), default="pending")
+    category: Mapped[str] = mapped_column(String(20), default="pertanyaan")
     answer: Mapped[str | None] = mapped_column(Text(), nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

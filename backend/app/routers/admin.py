@@ -70,6 +70,7 @@ def list_pending(
             "question": r.question,
             "user_email": r.user_email,
             "status": r.status,
+            "category": r.category,
             "answer": r.answer,
             "answered_at": r.answered_at.isoformat() if r.answered_at else None,
             "created_at": r.created_at.isoformat() if r.created_at else None,

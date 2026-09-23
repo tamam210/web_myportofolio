@@ -86,6 +86,9 @@
   }
   .badge.pending { background: rgba(168, 85, 247, 0.2); color: var(--primary); }
   .badge.answered { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .badge.penting { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+  .sec-title { margin: 1.5rem 0 0.8rem; font-size: 1.15rem; color: #c4b5fd; }
+  .sec-title:first-child { margin-top: 0; }
   .answer-text { color: var(--green); font-size: 0.9rem; margin: 8px 0; }
   textarea { min-height: 70px; resize: vertical; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -113,7 +116,7 @@
   <div id="panelBox" style="display:none;">
     <span class="logout" onclick="doLogout()">Logout</span>
     <h1>/admin</h1>
-    <p class="sub">Pertanyaan yang belum bisa dijawab chatbot. Isi jawabannya biar bot belajar &amp; (nanti) kasih tahu penanya.</p>
+    <p class="sub">⭐ Penting = pertanyaan kerja sama/kebisaan yang bot udah otomatis jawab. ❓ Pertanyaan = yang masih nunggu jawaban kamu.</p>
     <div id="list"></div>
   </div>
 </div>
@@ -187,39 +190,60 @@ async function loadPending() {
   try {
     const rows = await api('/api/admin/pending');
     if (!rows.length) {
-      list.innerHTML = '<div class="empty">Semua pertanyaan udah dijawab 👍</div>';
+      list.innerHTML = '<div class="empty">Kosong. Belum ada apa-apa di sini 👍</div>';
       return;
     }
+    const penting = rows.filter((r) => r.category === 'penting');
+    const tanya = rows.filter((r) => r.category !== 'penting');
+
     list.innerHTML = '';
-    rows.forEach((r) => {
-      const el = document.createElement('div');
-      el.className = 'item';
-      const badge = r.status === 'answered'
-        ? '<span class="badge answered">sudah dijawab</span>'
-        : '<span class="badge pending">pending</span>';
-      const answerBlock = r.answer
-        ? `<div class="answer-text">Jawaban: ${esc(r.answer)}</div>`
-        : '';
-      const answerInput = r.status === 'pending'
-        ? `<textarea id="ans_${r.id}" placeholder="Tulis jawaban bot disini...">${esc(r.answer || '')}</textarea>`
-        : '';
-      const answerBtn = r.status === 'pending'
-        ? `<button onclick="sendAnswer(${r.id})" style="margin-right:8px;">Simpan Jawaban</button>`
-        : '';
-      el.innerHTML = `
-        <div class="q">${esc(r.question)}</div>
-        <div class="meta">${badge} &nbsp;|&nbsp; dari: ${esc(r.user_email)} &nbsp;|&nbsp; ${esc(r.created_at)}</div>
-        ${answerBlock}
-        ${answerInput}
-        <div class="row">
-          ${answerBtn}
-          <button class="ghost" onclick="delQuestion(${r.id})">Hapus</button>
-        </div>`;
-      list.appendChild(el);
-    });
+    if (penting.length) {
+      list.appendChild(sectionTitle('⭐ Penting — udah bisa dijawab bot'));
+      penting.forEach((r) => list.appendChild(renderItem(r, true)));
+    }
+    if (tanya.length) {
+      list.appendChild(sectionTitle('❓ Pertanyaan — nunggu jawaban kamu'));
+      tanya.forEach((r) => list.appendChild(renderItem(r, false)));
+    }
   } catch (e) {
     if (e.message !== 'unauthorized') showMsg(e.message, 'error');
   }
+}
+
+function sectionTitle(text) {
+  const h = document.createElement('div');
+  h.className = 'sec-title';
+  h.textContent = text;
+  return h;
+}
+
+function renderItem(r, isPenting) {
+  const el = document.createElement('div');
+  el.className = 'item';
+  const badge = isPenting
+    ? '<span class="badge penting">penting</span>'
+    : r.status === 'answered'
+      ? '<span class="badge answered">sudah dijawab</span>'
+      : '<span class="badge pending">pending</span>';
+  const answerBlock = r.answer
+    ? `<div class="answer-text">Jawaban: ${esc(r.answer)}</div>`
+    : '';
+  const answerInput = (!isPenting && r.status === 'pending')
+    ? `<textarea id="ans_${r.id}" placeholder="Tulis jawaban bot disini...">${esc(r.answer || '')}</textarea>`
+    : '';
+  const answerBtn = (!isPenting && r.status === 'pending')
+    ? `<button onclick="sendAnswer(${r.id})" style="margin-right:8px;">Simpan Jawaban</button>`
+    : '';
+  el.innerHTML = `
+    <div class="q">${esc(r.question)}</div>
+    <div class="meta">${badge} &nbsp;|&nbsp; dari: ${esc(r.user_email)} &nbsp;|&nbsp; ${esc(r.created_at)}</div>
+    ${answerBlock}
+    ${answerInput}
+    <div class="row">
+      ${answerBtn}
+      <button class="ghost" onclick="delQuestion(${r.id})">Hapus</button>
+    </div>`;
+  return el;
 }
 
 async function sendAnswer(id) {
