@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - GW Portfolio</title>
+<style>
+  :root {
+    --bg: #0b0613;
+    --surface: #150d24;
+    --surface-alt: #1b1030;
+    --border: #2a1b47;
+    --primary: #a855f7;
+    --primary-dark: #7c3aed;
+    --text: #e9e2f5;
+    --muted: #a89cc0;
+    --green: #34d399;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem; }
+  h1 { font-size: 1.6rem; color: var(--primary); margin-bottom: 0.25rem; }
+  .sub { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    padding: 12px 14px;
+    margin: 6px 0 12px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  button:hover { opacity: 0.9; }
+  button.ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  button.danger { background: var(--red); }
+
+  .item {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.9rem;
+  }
+  .item .q { font-size: 1.05rem; margin-bottom: 6px; }
+  .item .meta { color: var(--muted); font-size: 0.8rem; margin-bottom: 8px; }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+  .badge.pending { background: rgba(168, 85, 247, 0.2); color: var(--primary); }
+  .badge.answered { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .answer-text { color: var(--green); font-size: 0.9rem; margin: 8px 0; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty { color: var(--muted); text-align: center; padding: 2rem 0; }
+  .logout { float: right; color: var(--muted); cursor: pointer; font-size: 0.85rem; text-decoration: underline; }
+  .msg { padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9rem; display: none; }
+  .msg.error { background: rgba(248, 113, 113, 0.15); color: var(--red); display: block; }
+  .msg.ok { background: rgba(52, 211, 153, 0.15); color: var(--green); display: block; }
+</style>
+</head>
+<body>
+<div class="wrap" id="page">
+  <div id="msgBox" class="msg"></div>
+
+  <!-- Form login -->
+  <div id="loginBox" class="card" style="display:none;">
+    <h1>Login Admin</h1>
+    <p class="sub">Halaman khusus pemilik portfolio. Jangan kasih tau siapa pun.</p>
+    <input type="text" id="username" placeholder="Username" autocomplete="username">
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+    <button onclick="doLogin()">Masuk</button>
+  </div>
+
+  <!-- Panel admin -->
+  <div id="panelBox" style="display:none;">
+    <span class="logout" onclick="doLogout()">Logout</span>
+    <h1>/admin</h1>
+    <p class="sub">Pertanyaan yang belum bisa dijawab chatbot. Isi jawabannya biar bot belajar &amp; (nanti) kasih tahu penanya.</p>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    ...opts,
+  });
+  if (res.status === 401) {
+    showLogin();
+    throw new Error('unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Terjadi kesalahan');
+  }
+  return res.json();
+}
+
+function showMsg(text, type) {
+  const box = document.getElementById('msgBox');
+  box.textContent = text;
+  box.className = 'msg ' + type;
+  setTimeout(() => { box.className = 'msg'; }, 4000);
+}
+
+function showLogin() {
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('panelBox').style.display = 'none';
+}
+
+function showPanel() {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('panelBox').style.display = 'block';
+  loadPending();
+}
+
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) return showMsg('Isi username & password', 'error');
+  try {
+    await api('/api/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    showPanel();
+    showMsg('Berhasil masuk', 'ok');
+  } catch (e) {
+    if (e.message === 'unauthorized') return;
+    showMsg(e.message, 'error');
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+  showLogin();
+}
+
+function esc(s) {
+  const div = document.createElement('div');
+  div.textContent = s == null ? '' : String(s);
+  return div.innerHTML;
+}
+
+async function loadPending() {
+  const list = document.getElementById('list');
+  try {
+    const rows = await api('/api/admin/pending');
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty">Semua pertanyaan udah dijawab 👍</div>';
+      return;
+    }
+    list.innerHTML = '';
+    rows.forEach((r) => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      const badge = r.status === 'answered'
+        ? '<span class="badge answered">sudah dijawab</span>'
+        : '<span class="badge pending">pending</span>';
+      const answerBlock = r.answer
+        ? `<div class="answer-text">Jawaban: ${esc(r.answer)}</div>`
+        : '';
+      const answerInput = r.status === 'pending'
+        ? `<textarea id="ans_${r.id}" placeholder="Tulis jawaban bot disini...">${esc(r.answer || '')}</textarea>`
+        : '';
+      const answerBtn = r.status === 'pending'
+        ? `<button onclick="sendAnswer(${r.id})" style="margin-right:8px;">Simpan Jawaban</button>`
+        : '';
+      el.innerHTML = `
+        <div class="q">${esc(r.question)}</div>
+        <div class="meta">${badge} &nbsp;|&nbsp; dari: ${esc(r.user_email)} &nbsp;|&nbsp; ${esc(r.created_at)}</div>
+        ${answerBlock}
+        ${answerInput}
+        <div class="row">
+          ${answerBtn}
+          <button class="ghost" onclick="delQuestion(${r.id})">Hapus</button>
+        </div>`;
+      list.appendChild(el);
+    });
+  } catch (e) {
+    if (e.message !== 'unauthorized') showMsg(e.message, 'error');
+  }
+}
+
+async function sendAnswer(id) {
+  const answer = document.getElementById('ans_' + id).value.trim();
+  if (!answer) return showMsg('Jawabannya jangan kosong', 'error');
+  try {
+    await api(`/api/admin/pending/${id}/answer`, {
+      method: 'POST',
+      body: JSON.stringify({ answer }),
+    });
+    showMsg('Jawaban disimpan', 'ok');
+    loadPending();
+  } catch (e) {
+    if (e.message !== 'unauthorized') showMsg(e.message, 'error');
+  }
+}
+
+async function delQuestion(id) {
+  if (!confirm('Hapus pertanyaan ini?')) return;
+  try {
+    await api(`/api/admin/pending/${id}/delete`, { method: 'POST' });
+    showMsg('Terhapus', 'ok');
+    loadPending();
+  } catch (e) {
+    if (e.message !== 'unauthorized') showMsg(e.message, 'error');
+  }
+}
+
+(async function init() {
+  try {
+    await api('/api/admin/me');
+    showPanel();
+  } catch (e) {
+    if (e.message === 'unauthorized') showLogin();
+  }
+})();
+</script>
+</body>
+</html>

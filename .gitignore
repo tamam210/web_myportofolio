@@ -1,0 +1,22 @@
+# ===== Rahasia — JANGAN PERNAH di-commit =====
+# .env berisi password database, hash admin, dll. Dilarang masuk GitHub.
+.env
+.env.*
+!.env.example
+!*.env.example
+
+# Variabel juga sering muncul dengan prefiks ini:
+*.local
+secrets.*
+
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# Log
+*.log
