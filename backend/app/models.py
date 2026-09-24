@@ -10,6 +10,7 @@ class ChatHistory(Base):
     __tablename__ = "chat_history"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), default="", index=True)
     user_message: Mapped[str] = mapped_column(Text())
     bot_reply: Mapped[str] = mapped_column(Text())
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

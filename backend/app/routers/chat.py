@@ -21,7 +21,12 @@ def _ask(question: str, db: Session) -> str | None:
     q = question.lower()
 
     if re.search(r"\b(halo|hai|hello|hi)\b", q):
-        return "Halo! 👋 Aku bot dari portfolio Tamam. Tanya-tanya soal skill, project, atau kontak boleh banget!"
+        return (
+            "Halo! 👋 Aku bot dari portfolio Tamam. Tanya-tanya soal skill, project, atau kontak, "
+            "atau ketik apa aja yang kamu mau tanya.\n\n"
+            "**Jika jawaban anda belum dijawab atau belum sesuai dengan pertanyaan anda mohon tulis/prompt** "
+            '***tolong tanyakan kepada developer anda "pertanyaan"***'
+        )
 
     if any(w in q for w in ["siapa", "nama kamu", "kenalan", "introduce", "tentang"]):
         return "Aku bantu jawab soal Tamam Ni'amillah R.P.W. — mahasiswa Teknik Informatika yang fokus di Web Development & Machine Learning."
@@ -109,6 +114,83 @@ def _looks_like_email(value: str) -> bool:
     return "@" in value and "." in value and len(value) < 255
 
 
+_FORWARD_PATTERNS = [
+    r"\b(sampaikan|teruskan|forward|kasih|kirim|beritahu|tanyakan)\b.*\b(tamam|thamam|developer)\b",
+    r"\b\btamam\b.*\b(sampaikan|tanyakan|tanya)\b",
+]
+
+
+def _is_forward_request(message: str) -> bool:
+    q = message.lower()
+    return any(re.search(p, q) for p in _FORWARD_PATTERNS)
+
+
+def _extract_forwarded_question(message: str) -> str:
+    parts = re.split(r"\b(tamam|thamam|developer)\b", message, flags=re.I)
+    if len(parts) > 1:
+        candidate = parts[-1].strip().lstrip(":,-. ")
+        if len(candidate) >= 8:
+            return candidate
+    return ""
+
+
+def _last_question(session_id: str, db: Session) -> str | None:
+    if not session_id:
+        return None
+    last = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.session_id == session_id)
+        .order_by(ChatHistory.id.desc())
+        .first()
+    )
+    if last and last.user_message:
+        return last.user_message.strip()
+    return None
+
+
+def _handle_forward(message: str, session_id: str, user_email: str, db: Session) -> ChatOut:
+    question = _last_question(session_id, db) or _extract_forwarded_question(message)
+    if not question:
+        return ChatOut(
+            reply="Oke, mau kusampaikan ke Tamam! Tapi pertanyaannya belum ada nih 😅. "
+            "Tulis dulu pertanyaannya, terus bilang 'sampaikan ke Tamam' lagi ya."
+        )
+
+    exists = (
+        db.query(PendingQuestion)
+        .filter(
+            PendingQuestion.status == "pending",
+            PendingQuestion.question == question,
+        )
+        .first()
+    )
+    if exists:
+        db.add(ChatHistory(user_message=message, bot_reply="[forward: sudah tercatat]", session_id=session_id))
+        db.commit()
+        return ChatOut(reply="Pertanyaan yang itu udah ada di tempat pertanyaan kok, gak perlu disampaikan ulang. 👍")
+
+    db.add(
+        PendingQuestion(
+            question=question,
+            user_email=user_email,
+            status="pending",
+            category="pertanyaan",
+        )
+    )
+    db.add(
+        ChatHistory(
+            user_message=message,
+            bot_reply=f"[disampaikan ke Tamam: {question}]",
+            session_id=session_id,
+        )
+    )
+    db.commit()
+    return ChatOut(
+        reply=f"Siap! Pertanyaanmu ('{question}') udah kutaruh di tempat pertanyaan Tamam. "
+        "Nanti dijawab, dan bakal kabarin kamu. 🙏"
+    )
+
+
 _QUESTION_WORDS = {
     "apa", "apakah", "sapa", "siapa", "kenapa", "kapan", "dimana", "dima",
     "gimana", "bagaimana", "knp", "kok", "bisa", "boleh", "mau", "kak", "gmn",
@@ -162,6 +244,7 @@ def _ask_taught(db: Session, question: str) -> str | None:
         db.query(PendingQuestion)
         .filter(
             PendingQuestion.status == "answered",
+            PendingQuestion.category == "pertanyaan",
             PendingQuestion.answer.isnot(None),
         )
         .all()
@@ -176,8 +259,9 @@ def _ask_taught(db: Session, question: str) -> str | None:
         if not t_words:
             continue
         overlap = len(q_words & t_words)
-        score = overlap / len(t_words)
-        if score >= 0.6 and score > best[0]:
+        denom = max(min(len(t_words), len(q_words)), 1)
+        score = overlap / denom
+        if overlap >= 2 and score >= 0.6 and score > best[0]:
             best = (score, row.answer)
 
     return best[1] if best[1] else None
@@ -190,6 +274,10 @@ async def chat(payload: ChatIn, db: Session = Depends(get_db)):
         return ChatOut(reply="Kirim pesan dong dulu 😸")
 
     user_email = payload.user_email.strip()
+
+    # Pengguna minta pertanyaannya disampaikan langsung ke Tamam.
+    if _is_forward_request(message):
+        return _handle_forward(message, payload.session_id, user_email, db)
 
     # (Buat client lama) Kalau bot lagi menunggu email, pesan ini dianggap email.
     if payload.session_id in _waiting_email:
@@ -233,9 +321,11 @@ async def chat(payload: ChatIn, db: Session = Depends(get_db)):
             )
 
     # Pertanyaan tentang kebisaan/kerja sama/elektronik -> bot bisa jawab,
-    # dan dicatat ke admin sebagai kategori "penting" (answered).
+    # tapi kalau Tamam udah nulis jawaban yang bener (di admin 'Pertanyaan'),
+    # yang itu yang dipakai. Dicatat ke admin sebagai "penting" DAN "pertanyaan".
     capability = _capability_answer(message)
     if capability:
+        reply = _ask_taught(db, message) or capability
         now = datetime.utcnow()
         exists = (
             db.query(PendingQuestion)
@@ -253,18 +343,35 @@ async def chat(payload: ChatIn, db: Session = Depends(get_db)):
                     user_email=user_email,
                     status="answered",
                     category="penting",
-                    answer=capability,
+                    answer=reply,
                     answered_at=now,
                 )
             )
-        db.add(ChatHistory(user_message=message, bot_reply=capability))
+        tanya_exists = (
+            db.query(PendingQuestion)
+            .filter(
+                PendingQuestion.category == "pertanyaan",
+                PendingQuestion.question == message,
+            )
+            .first()
+        )
+        if not tanya_exists:
+            db.add(
+                PendingQuestion(
+                    question=message,
+                    user_email=user_email,
+                    status="pending",
+                    category="pertanyaan",
+                )
+            )
+        db.add(ChatHistory(user_message=message, bot_reply=reply, session_id=payload.session_id))
         db.commit()
-        return ChatOut(reply=capability)
+        return ChatOut(reply=reply)
 
     answer = _ask(message, db) or _ask_taught(db, message)
 
     if answer:
-        db.add(ChatHistory(user_message=message, bot_reply=answer))
+        db.add(ChatHistory(user_message=message, bot_reply=answer, session_id=payload.session_id))
         db.commit()
         return ChatOut(reply=answer)
 
@@ -281,7 +388,7 @@ async def chat(payload: ChatIn, db: Session = Depends(get_db)):
             f"Penanya: {user_email}\n\nPertanyaan:\n{message}\n\n"
             "Kasih jawabannya ke bot, nanti dikirim balik ke email penanya.",
         )
-        db.add(ChatHistory(user_message=message, bot_reply="[belum terjawab, email pengirim ada]"))
+        db.add(ChatHistory(user_message=message, bot_reply="[belum terjawab, email pengirim ada]", session_id=payload.session_id))
         db.commit()
 
         return ChatOut(
@@ -296,7 +403,7 @@ async def chat(payload: ChatIn, db: Session = Depends(get_db)):
     db.flush()
     db.refresh(pending)
     _waiting_email[payload.session_id] = pending.id
-    db.add(ChatHistory(user_message=message, bot_reply="[belum terjawab, menunggu email pengirim]"))
+    db.add(ChatHistory(user_message=message, bot_reply="[belum terjawab, menunggu email pengirim]", session_id=payload.session_id))
     db.commit()
 
     return ChatOut(
