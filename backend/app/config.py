@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
+    # Cookie session admin. Set true kalau sudah jalan di HTTPS (produksi);
+    # di localhost biarkan false supaya login tetap jalan.
+    cookie_secure: bool = False
+
+    # Pembatas percobaan login (anti brute-force), per IP.
+    login_max_failures: int = 5
+    login_window_seconds: int = 300
+    login_lockout_seconds: int = 900
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property

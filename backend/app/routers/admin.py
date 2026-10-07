@@ -1,3 +1,4 @@
+import hmac
 from datetime import datetime
 from typing import Union
 
@@ -15,8 +16,15 @@ from ..auth import (
 from ..config import settings
 from ..database import get_db
 from ..models import AdminSession, PendingQuestion
+from ..ratelimit import LoginRateLimiter
 
 router = APIRouter()
+
+login_limiter = LoginRateLimiter(
+    max_failures=settings.login_max_failures,
+    window_seconds=settings.login_window_seconds,
+    lockout_seconds=settings.login_lockout_seconds,
+)
 
 
 class LoginIn(BaseModel):
@@ -28,17 +36,38 @@ class AnswerIn(BaseModel):
     answer: str
 
 
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/api/admin/login")
-def admin_login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
-    if payload.username != settings.admin_username or not verify_admin_password(payload.password):
+def admin_login(
+    payload: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)
+):
+    ip = _client_ip(request)
+    wait = login_limiter.retry_after(ip)
+    if wait is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Terlalu banyak percobaan login. Coba lagi dalam {wait} detik.",
+            headers={"Retry-After": str(wait)},
+        )
+
+    # Jalanin dua-duanya biar waktu respons sama, nggak kebaca mana yang salah.
+    username_ok = hmac.compare_digest(payload.username.encode(), settings.admin_username.encode())
+    password_ok = verify_admin_password(payload.password)
+    if not (username_ok and password_ok):
+        login_limiter.record_failure(ip)
         raise HTTPException(status_code=401, detail="Username atau password salah")
 
+    login_limiter.reset(ip)
     token = create_session(db)
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
+        secure=settings.cookie_secure,
         max_age=8 * 60 * 60,
         path="/",
     )
@@ -50,7 +79,7 @@ def admin_logout(request: Request, response: Response, db: Session = Depends(get
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if token:
         destroy_session(token, db)
-    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/", secure=settings.cookie_secure)
     return {"ok": True}
 
 
