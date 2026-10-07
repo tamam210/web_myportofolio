@@ -1,5 +1,4 @@
 import Reveal from './Reveal.jsx';
-import profilePhoto from '../assets/profile.jpg';
 
 const info = [
   { label: 'Degree', value: 'Informatics Engineering' },
@@ -17,12 +16,8 @@ export default function About() {
       </Reveal>
       <Reveal delay={150} variant="up">
         <div className="about-content">
-          <div className="about-photo">
-            <img
-              src={profilePhoto}
-              alt="Foto Tamam Ni'amillah Ramdhan Putra Widyana"
-              loading="lazy"
-            />
+          <div className="about-avatar" role="img" aria-label="Logo Tamam Ni'amillah">
+            TW
           </div>
           <div className="about-text">
             <p>
