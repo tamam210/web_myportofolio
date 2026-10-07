@@ -1,4 +1,5 @@
 import Reveal from './Reveal.jsx';
+import Avatar from './Avatar.jsx';
 
 const info = [
   { label: 'Degree', value: 'Informatics Engineering' },
@@ -16,8 +17,8 @@ export default function About() {
       </Reveal>
       <Reveal delay={150} variant="up">
         <div className="about-content">
-          <div className="about-avatar" role="img" aria-label="Logo Tamam Ni'amillah">
-            TW
+          <div className="about-avatar">
+            <Avatar />
           </div>
           <div className="about-text">
             <p>
