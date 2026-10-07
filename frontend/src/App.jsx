@@ -11,10 +11,12 @@ export default function App() {
     <>
       <Navbar />
       <Hero />
-      <About />
-      <Skills />
-      <Projects />
-      <Chat />
+      <main>
+        <About />
+        <Skills />
+        <Projects />
+        <Chat />
+      </main>
       <Footer />
     </>
   );

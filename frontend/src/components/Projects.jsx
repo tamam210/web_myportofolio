@@ -33,26 +33,24 @@ const projects = [
 export default function Projects() {
   return (
     <section id="projects" className="projects-section">
-      <Reveal>
-        <div className="section-header">
-          <h2>Featured Projects</h2>
-          <div className="underline"></div>
-        </div>
+      <Reveal as="header" className="section-header">
+        <h2>Featured Projects</h2>
+        <span className="underline" aria-hidden="true"></span>
       </Reveal>
-      <div className="card-container">
+      <ul className="card-container">
         {projects.map((project, i) => (
-          <Reveal key={project.title} delay={i * 120} variant="up">
+          <Reveal as="li" key={project.title} delay={i * 120} variant="up">
             <article className="card">
-              <div className="card-tags">
+              <ul className="card-tags" aria-label={`${project.title} technologies`}>
                 {project.tags.map((tag) => (
-                  <span className="card-tag" key={tag}>
+                  <li className="card-tag" key={tag}>
                     {tag}
-                  </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
               <h3>{project.title}</h3>
               <p>{project.description}</p>
-              <div className="card-links">
+              <nav className="card-links" aria-label={`${project.title} links`}>
                 <a href={project.code} target="_blank" rel="noopener">
                   View Code &rarr;
                 </a>
@@ -64,11 +62,11 @@ export default function Projects() {
                 <a href={project.docs} target="_blank" rel="noopener">
                   Docs
                 </a>
-              </div>
+              </nav>
             </article>
           </Reveal>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

@@ -73,14 +73,14 @@ export default function Hero() {
         <p>
           "Full-Stack Developer crafting FastAPI-powered backends, MySQL databases, Dockerized deployments, and intuitive web interfaces."
         </p>
-        <div className="hero-actions">
+        <nav className="hero-actions" aria-label="Hero actions">
           <a href="#projects" className="btn btn-primary">
             View My Projects
           </a>
           <a href="#contact" className="btn btn-outline">
             Get In Touch
           </a>
-        </div>
+        </nav>
       </div>
       <div className="hero-floats" aria-hidden="true">
         <span className="float-orb orb-1"></span>

@@ -1,4 +1,5 @@
 import Reveal from './Reveal.jsx';
+import profilePhoto from '../assets/profile.jpg';
 
 const info = [
   { label: 'Degree', value: 'Informatics Engineering' },
@@ -9,15 +10,20 @@ const info = [
 
 export default function About() {
   return (
-    <main id="about" className="about-section">
-      <Reveal>
-        <div className="section-header">
-          <h2>About Me</h2>
-          <div className="underline"></div>
-        </div>
+    <section id="about" className="about-section">
+      <Reveal as="header" className="section-header">
+        <h2>About Me</h2>
+        <span className="underline" aria-hidden="true"></span>
       </Reveal>
       <Reveal delay={150} variant="up">
         <div className="about-content">
+          <div className="about-photo">
+            <img
+              src={profilePhoto}
+              alt="Foto Tamam Ni'amillah Ramdhan Putra Widyana"
+              loading="lazy"
+            />
+          </div>
           <div className="about-text">
             <p>
               "I'm a Full-Stack Developer specializing in building robust backends with MySQL,
@@ -38,6 +44,6 @@ export default function About() {
           </div>
         </div>
       </Reveal>
-    </main>
+    </section>
   );
 }

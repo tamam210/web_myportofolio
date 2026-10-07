@@ -30,18 +30,20 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className="navbar">
+    <nav className="navbar" aria-label="Primary navigation">
       <a href="#home" className="logo" onClick={() => setMenuOpen(false)}>
         MyPortfolio
       </a>
       <button
         className="menu-toggle"
         aria-label="Toggle menu"
+        aria-expanded={menuOpen}
+        aria-controls="primary-menu"
         onClick={() => setMenuOpen((open) => !open)}
       >
         {menuOpen ? '✕' : '☰'}
       </button>
-      <ul className={menuOpen ? 'active' : ''}>
+      <ul id="primary-menu" className={menuOpen ? 'active' : ''}>
         {links.map((link) => (
           <li key={link.href}>
             <a

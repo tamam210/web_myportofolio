@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react';
 
-export default function Reveal({ children, delay = 0, variant = 'up', className = '' }) {
+export default function Reveal({
+  children,
+  delay = 0,
+  variant = 'up',
+  className = '',
+  as: Element = 'div',
+  ...props
+}) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -22,12 +29,13 @@ export default function Reveal({ children, delay = 0, variant = 'up', className 
   }, []);
 
   return (
-    <div
+    <Element
       ref={ref}
+      {...props}
       className={`reveal reveal-${variant} ${className}`}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
-    </div>
+    </Element>
   );
 }

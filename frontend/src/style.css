@@ -513,6 +513,7 @@ html {
 }
 
 .underline {
+    display: block;
     width: 60px;
     height: 4px;
     background-color: var(--primary);
@@ -534,6 +535,18 @@ html {
 .about-content {
     max-width: 700px;
     margin: 0 auto;
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.about-photo img {
+    width: 100%;
+    display: block;
+    border-radius: var(--radius);
+    border: 3px solid var(--primary);
+    box-shadow: var(--shadow-hover);
 }
 
 .about-text p {
@@ -576,6 +589,8 @@ html {
     gap: 20px;
     max-width: 960px;
     margin: 0 auto;
+    padding: 0;
+    list-style: none;
 }
 
 .skill-card {
@@ -594,6 +609,7 @@ html {
 }
 
 .skill-icon {
+    display: block;
     font-size: 2.5rem;
     margin-bottom: 0.75rem;
 }
@@ -623,6 +639,8 @@ html {
     gap: 24px;
     max-width: 1100px;
     margin: 0 auto;
+    padding: 0;
+    list-style: none;
     align-items: stretch;
 }
 
@@ -647,7 +665,9 @@ html {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 1rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
 }
 
 .card-tag {
@@ -828,7 +848,9 @@ html {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    margin: 0;
     padding: 1.25rem;
+    list-style: none;
     height: 380px;
     overflow-y: auto;
 }
@@ -947,8 +969,41 @@ footer {
 .footer-links {
     display: flex;
     justify-content: center;
-    gap: 1.5rem;
+    gap: 0.75rem;
     margin: 1rem 0;
+}
+
+.footer-links .social-link {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--primary-light);
+    text-decoration: none;
+    transition: background var(--transition), border-color var(--transition), color var(--transition), transform var(--transition);
+}
+
+.footer-links .social-link:hover,
+.footer-links .social-link:focus-visible {
+    background: var(--primary);
+    border-color: var(--primary-light);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-3px);
+}
+
+.footer-links .social-link:focus-visible {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 3px;
+}
+
+.footer-links .social-link svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
 }
 
 footer a {
@@ -1016,6 +1071,16 @@ footer a:hover {
 
     .about-info {
         grid-template-columns: 1fr;
+    }
+
+    .about-content {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .about-photo {
+        max-width: 220px;
+        width: 100%;
     }
 
     .form-row {
@@ -1233,39 +1298,29 @@ footer a:hover {
 /* ================================
    EMAIL POPUP (SEBELUM CHAT)
 =============================== */
-.email-modal-overlay {
+.email-modal {
     --visual-viewport-height: 100vh;
     --visual-viewport-height: 100dvh;
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: auto;
-    left: 0;
-    height: var(--visual-viewport-height);
-    background: rgba(11, 6, 19, 0.88);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    z-index: 1000;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-
-.email-modal {
+    inset: 0;
+    width: calc(100% - 2rem);
+    max-width: 400px;
+    max-height: calc(var(--visual-viewport-height) - 2rem);
+    margin: auto;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-hover);
     padding: 2rem;
-    width: 100%;
-    max-width: 400px;
-    max-height: calc(var(--visual-viewport-height) - 2rem);
     display: flex;
     overflow: hidden;
     text-align: center;
+}
+
+.email-modal::backdrop {
+    background: rgba(11, 6, 19, 0.88);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
 }
 
 .email-modal h3 {
@@ -1277,6 +1332,13 @@ footer a:hover {
     color: var(--text-muted);
     font-size: 0.95rem;
     margin: 0 0 1rem;
+}
+
+.email-modal label {
+    color: var(--primary-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
 }
 
 .email-modal form {
@@ -1326,10 +1388,6 @@ footer a:hover {
 }
 
 @media (max-width: 600px) {
-    .email-modal-overlay {
-        padding: 0.5rem;
-    }
-
     .email-modal {
         padding: 1rem;
         max-height: calc(var(--visual-viewport-height) - 1rem);

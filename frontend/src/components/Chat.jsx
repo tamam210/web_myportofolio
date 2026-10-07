@@ -71,12 +71,24 @@ export default function Chat() {
   }, [messages, loading]);
 
   useEffect(() => {
-    const overlay = emailModalRef.current;
+    const dialog = emailModalRef.current;
+    if (!dialog || !showEmailModal) return;
+
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      dialog.setAttribute('open', '');
+    }
+
     const visualViewport = window.visualViewport;
-    if (!overlay || !visualViewport) return;
+    if (!visualViewport) {
+      return () => {
+        if (typeof dialog.close === 'function') dialog.close();
+      };
+    }
 
     const updateViewport = () => {
-      overlay.style.setProperty('--visual-viewport-height', `${visualViewport.height}px`);
+      dialog.style.setProperty('--visual-viewport-height', `${visualViewport.height}px`);
     };
 
     updateViewport();
@@ -84,6 +96,7 @@ export default function Chat() {
 
     return () => {
       visualViewport.removeEventListener('resize', updateViewport);
+      if (typeof dialog.close === 'function') dialog.close();
     };
   }, [showEmailModal]);
 
@@ -128,76 +141,94 @@ export default function Chat() {
   return (
     <section id="contact" className="chat-section">
       {showEmailModal && (
-        <div className="email-modal-overlay" ref={emailModalRef}>
-          <div className="email-modal">
-            <form onSubmit={startChat}>
-              <div className="email-modal-content">
-                <h3>Mulai Ngobrol 💬</h3>
-                <p>
-                  Kasih alamat email dulu ya — kalau ada pertanyaan yang belum bisa ku-jawab,
-                  jawabannya bakal kukirim ke email kamu. 🙏
-                </p>
-                <input
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => {
-                    setUserEmail(e.target.value);
-                    setEmailError('');
-                  }}
-                  placeholder="nama@email.com"
-                />
-                {emailError && <span className="email-modal-error">{emailError}</span>}
-              </div>
-              <button type="submit" className="btn btn-primary">
-                Mulai Chat 🚀
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <Reveal>
-        <div className="section-header">
-          <h2>Chat With Me</h2>
-          <div className="underline"></div>
-        </div>
-      </Reveal>
-      <Reveal delay={120}>
-        <div className="chat-card">
-          <div className="chat-header">
-            <span className="chat-status-dot"></span>
-            <strong>GW Portfolio Bot</strong>
-            <span className="chat-status">online</span>
-          </div>
-
-          <div className="chat-box" ref={chatBoxRef}>
-            {messages.map((msg, i) => (
-              <div key={i} className={`chat-message ${msg.role}`}>
-                {renderInline(msg.text)}
-              </div>
-            ))}
-            {loading && (
-              <div className="chat-message bot">
-                <span className="chat-typing">
-                  <span></span><span></span><span></span>
+        <dialog
+          className="email-modal"
+          ref={emailModalRef}
+          aria-labelledby="email-modal-title"
+          tabIndex={-1}
+          onCancel={(event) => {
+            event.preventDefault();
+            setShowEmailModal(false);
+          }}
+        >
+          <form onSubmit={startChat}>
+            <div className="email-modal-content">
+              <h3 id="email-modal-title">Mulai Ngobrol 💬</h3>
+              <p>
+                Kasih alamat email dulu ya — kalau ada pertanyaan yang belum bisa ku-jawab,
+                jawabannya bakal kukirim ke email kamu. 🙏
+              </p>
+              <label htmlFor="chat-email">Email</label>
+              <input
+                id="chat-email"
+                type="email"
+                value={userEmail}
+                onChange={(e) => {
+                  setUserEmail(e.target.value);
+                  setEmailError('');
+                }}
+                placeholder="nama@email.com"
+                autoComplete="email"
+                aria-invalid={Boolean(emailError)}
+                aria-describedby={emailError ? 'email-error' : undefined}
+              />
+              {emailError && (
+                <span id="email-error" className="email-modal-error" role="alert">
+                  {emailError}
                 </span>
-              </div>
-            )}
-          </div>
-
-          <form className="chat-form" onSubmit={send}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ketik pesan kamu..."
-              disabled={loading}
-            />
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              Kirim
+              )}
+            </div>
+            <button type="submit" className="btn btn-primary">
+              Mulai Chat 🚀
             </button>
           </form>
-        </div>
+        </dialog>
+      )}
+
+      <Reveal as="header" className="section-header">
+        <h2>Chat With Me</h2>
+        <span className="underline" aria-hidden="true"></span>
+      </Reveal>
+      <Reveal as="section" className="chat-card" aria-labelledby="chat-title">
+        <header className="chat-header">
+          <span className="chat-status-dot"></span>
+          <strong id="chat-title">GW Portfolio Bot</strong>
+          <span className="chat-status">online</span>
+        </header>
+
+        <ol
+          className="chat-box"
+          ref={chatBoxRef}
+          role="log"
+          aria-label="Chat messages"
+          aria-busy={loading}
+        >
+          {messages.map((msg, i) => (
+            <li key={i} className={`chat-message ${msg.role}`}>
+              {renderInline(msg.text)}
+            </li>
+          ))}
+          {loading && (
+            <li className="chat-message bot">
+              <span className="chat-typing">
+                <span></span><span></span><span></span>
+              </span>
+            </li>
+          )}
+        </ol>
+
+        <form className="chat-form" onSubmit={send}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ketik pesan kamu..."
+            disabled={loading}
+          />
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            Kirim
+          </button>
+        </form>
       </Reveal>
     </section>
   );
